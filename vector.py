@@ -8,10 +8,6 @@ getcontext().prec = 30
 
 class Vector(object):
 
-    # CANNOT_NORMALIZE_ZERO_VECTOR_MSG = "Cannot normalize to zero vector"
-    NO_UNIQUE_PARALLEL_COMPONENT_MSG = "No unique parallel component"
-    NO_UNIQUE_ORTHOGONAL_COMPONENT_MSG = "No unique orthogonal component"
-
     def __init__(self, coordinates):
         try:
             if not coordinates:
@@ -36,19 +32,35 @@ class Vector(object):
         return self.magnitude() < tolerance
 
     def magnitude(self):
+        """
+        Calculates magnitudes of given vector coordinates
+
+        :return: (float)
+        """
         coordinates_squared = [x**2 for x in self.coordinates]
         return Decimal(sqrt(sum(coordinates_squared)))
 
     def normalized(self):
+        """
+        Calculates the unit vector in the same direction as given vector
+
+        :return: (Vector)
+        """
         try:
             magnitude = self.magnitude()
             # multiplies self.coordinates by 1./magnitude
             return self.times_scalar(Decimal('1.0') / magnitude)
 
         except ZeroDivisionError:
-            raise Exception(self.CANNOT_NORMALIZE_ZERO_VECTOR_MSG)
+            raise Exception(constants.CANNOT_NORMALIZE_ZERO_VECTOR_MSG)
 
     def dot_product(self, v):
+        """
+        Calculates dot product of two given vectors
+
+        :param v: (Vector) vector to be added to dot product with self.coordinates
+        :return: (float)
+        """
         try:
             dot_product = [x * y for x, y in zip(self.coordinates, v.coordinates)]
             return sum(dot_product)
@@ -70,7 +82,7 @@ class Vector(object):
                 return angle_in_radians
 
         except Exception as e:
-            if str(e) == self.CANNOT_NORMALIZE_ZERO_VECTOR_MSG:
+            if str(e) == constants.CANNOT_NORMALIZE_ZERO_VECTOR_MSG:
                 raise Exception("Cannot compute an angle with zero vector")
             else:
                 raise e
@@ -127,8 +139,8 @@ class Vector(object):
             return self.minus(projection)
 
         except Exception as e:
-            if str(e) == self.NO_UNIQUE_PARALLEL_COMPONENT_MSG:
-                raise Exception(self.NO_UNIQUE_ORTHOGONAL_COMPONENT_MSG)
+            if str(e) == constants.NO_UNIQUE_PARALLEL_COMPONENT_MSG:
+                raise Exception(constants.NO_UNIQUE_ORTHOGONAL_COMPONENT_MSG)
             else:
                 raise e
 
@@ -142,6 +154,41 @@ class Vector(object):
 
         b_normalized = b.normalized()
         return b_normalized.times_scalar(self.dot_product(b_normalized))
+
+    def cross_product(self, v):
+        """
+        Calculates cross product of given vectors self and v
+
+        :param v: (Vector) second vector
+        :return: (Vector) the cross product
+        """
+        try:
+            x_1, y_1, z_1 = self.coordinates
+            x_2, y_2, z_2 = v.coordinates
+            new_coordinates = [
+                y_1 * z_2 - y_2 * z_1,
+                -(x_1 * z_2 - x_2 * z_1),
+                x_1 * y_2 - x_2 * y_1
+            ]
+            return Vector(new_coordinates)
+
+        except ValueError as e:
+            msg = str(e)
+            if msg == 'need more than 2 values to unpack':
+                self_embedded_in_R3 = Vector(self.coordinates + ('0',))
+                v_embedded_in_R3 = Vector(v.coordinates + ('0', ))
+                return self_embedded_in_R3.cross_product(v_embedded_in_R3)
+            elif msg == 'too many values to unpack' or msg == 'need more than 1 value to unpack':
+                raise Exception(constants.ONLY_DEFINED_IN_TWO_THREE_DIMS_MSG)
+            else:
+                raise e
+
+    def area_of_triangle_with(self, v):
+        return self.area_of_parallelogram_with(v) / Decimal('2.0')
+
+    def area_of_parallelogram_with(self, v):
+        _cross_product = self.cross_product(v)
+        return _cross_product.magnitude()
 
     def plus(self, v):
         """
